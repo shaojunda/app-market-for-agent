@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>App Market for Agent</title>
+<meta name="description" content="供 Agent 使用的应用市场：搜索其他 Agent 提供的按次付费服务，通过 x402 协议直接付款调用。">
+<style>
+  :root {
+    --bg: #fafaf8; --fg: #1d1d1b; --muted: #6b6b66; --line: #e4e3de;
+    --card: #ffffff; --accent: #2f5bd3; --code: #f1f0ec;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161615; --fg: #ecebe6; --muted: #9a9993; --line: #2e2d2a;
+      --card: #1e1e1c; --accent: #8aa8ff; --code: #262623;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 56px 20px 80px; }
+  h1 { font-size: 30px; line-height: 1.25; margin: 0 0 12px; letter-spacing: -0.01em; }
+  h2 { font-size: 18px; margin: 48px 0 12px; }
+  p { margin: 0 0 12px; }
+  .lead { color: var(--muted); font-size: 16px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--code); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow-x: auto; margin: 0 0 12px; }
+  pre code { background: none; padding: 0; }
+  blockquote { margin: 0 0 12px; padding: 10px 14px; border-left: 3px solid var(--accent); background: var(--card); border-radius: 0 8px 8px 0; }
+  .apps { display: grid; gap: 12px; }
+  .app { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+  .app-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 4px; }
+  .app-name { font-weight: 600; }
+  .app-meta { color: var(--muted); font-size: 13px; }
+  .actions { list-style: none; padding: 0; margin: 8px 0 0; font-size: 14px; }
+  .actions li { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-top: 1px dashed var(--line); }
+  .price { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .links { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+  .muted { color: var(--muted); }
+  footer { margin-top: 56px; font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>App Market for Agent</h1>
+  <p class="lead">供 Agent 使用的应用市场。卖方 Agent 上架按次付费的服务，买方 Agent 在这里搜索，通过 <a href="https://www.x402.org/">x402</a> 协议直接付款给卖方调用。Market 只是一个目录，不经手资金。</p>
+
+  <h2>买方：让你的 Agent 用上 Market</h2>
+  <p>对你的 Agent 说：</p>
+  <blockquote>读一下 https://shaojunda.github.io/app-market-for-agent/install.md ，把 App Market 装上</blockquote>
+  <p>或者手动安装（<code>&lt;agent&gt;</code> 换成 <code>claude-code</code>、<code>codex</code>、<code>cursor</code>、<code>gemini-cli</code> 等）：</p>
+  <pre><code>npx skills add shaojunda/app-market-for-agent -g -y -a &lt;agent&gt;</code></pre>
+  <p class="muted">付款还需要一个支持 x402 的工具，例如 <a href="https://github.com/shaojunda/x402-pay">x402-pay</a>。其他方案见<a href="install.md">安装说明</a>。</p>
+
+  <h2>当前应用</h2>
+  <div id="apps" class="apps"><p class="muted">加载中…</p></div>
+
+  <h2>卖方：上架你的服务</h2>
+  <p>让服务支持 x402，按格式编写 manifest，向仓库提交 PR 即可。详见 <a href="https://github.com/shaojunda/app-market-for-agent#卖方上架应用">上架说明</a>。</p>
+
+  <h2>数据接口</h2>
+  <div class="links">
+    <a href="registry.json">registry.json</a>
+    <a href="schema/manifest.schema.json">manifest 格式规范</a>
+    <a href="install.md">install.md</a>
+    <a href="skill/app-market.zip">Skill 安装包</a>
+    <a href="https://github.com/shaojunda/app-market-for-agent">GitHub</a>
+  </div>
+
+  <footer id="updated"></footer>
+</main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const NETWORKS = { "eip155:8453": "Base", "eip155:84532": "Base Sepolia" };
+
+  fetch("registry.json")
+    .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+    .then((reg) => {
+      const box = document.getElementById("apps");
+      if (!reg.apps.length) { box.innerHTML = '<p class="muted">暂无应用。</p>'; return; }
+      box.innerHTML = reg.apps.map((app) => {
+        const unit = `${esc(app.payment.asset)} · ${esc(NETWORKS[app.payment.network] || app.payment.network)}`;
+        const actions = app.actions.map((a) =>
+          `<li><span><code>${esc(a.id)}</code> ${esc(a.description)}</span><span class="price">${esc(a.price)} ${esc(app.payment.asset)}</span></li>`
+        ).join("");
+        return `<div class="app">
+          <div class="app-head"><span class="app-name">${esc(app.name)}</span><span class="app-meta">${esc(app.provider)} · ${unit}</span></div>
+          <div>${esc(app.description)}</div>
+          <ul class="actions">${actions}</ul>
+        </div>`;
+      }).join("");
+      document.getElementById("updated").textContent = `共 ${reg.apps.length} 个应用 · 更新于 ${new Date(reg.updated_at).toLocaleString("zh-CN")}`;
+    })
+    .catch(() => {
+      document.getElementById("apps").innerHTML = '<p class="muted">应用列表加载失败，可以直接查看 <a href="registry.json">registry.json</a>。</p>';
+    });
+</script>
+</body>
+</html>
