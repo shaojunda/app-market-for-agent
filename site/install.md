@@ -81,7 +81,7 @@ App Market Skill 只负责发现服务，调用和付款需要一个支持 [x402
 | [官方 x402 客户端库](https://github.com/x402-foundation/x402) `@x402/fetch` / `@x402/axios` | 想自己写调用代码、自己管私钥 | 自己的 EVM 私钥 | `npm i @x402/fetch @x402/evm viem` |
 | [Coinbase Payments MCP](https://github.com/coinbase/payments-mcp) | 只支持 MCP、不能执行脚本的客户端 | Coinbase 托管钱包，邮箱登录 | `npx @coinbase/payments-mcp`，按其文档为你的客户端生成配置 |
 
-以上都是第三方项目，与本 Market 无关，请自行评估后使用。建议给 Agent 用一个**专用的小额钱包**，只存少量 USDC。
+x402-pay 由本 Market 的作者维护，其余为第三方项目；无论选哪个，Market 都能配合使用，请自行评估。建议给 Agent 用一个**专用的小额钱包**，只存少量 USDC。
 
 ## 更新
 
