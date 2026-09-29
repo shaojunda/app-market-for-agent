@@ -221,18 +221,29 @@ manifest 使用 JSON 格式。完整的格式规范见 [`schema/manifest.schema.
 
 ### 提交与审核
 
-**提交方式**：向 [shaojunda/app-market-for-agent](https://github.com/shaojunda/app-market-for-agent) 提交 PR，新增 `registry/<id>.json`。提交前可以在本地运行 `npm run check` 自查。
+**提交方式**：向 [shaojunda/app-market-for-agent](https://github.com/shaojunda/app-market-for-agent) 提交 PR，新增 `registry/<id>.json`。一个上架 PR 只能修改 `registry/` 下的文件。提交前可以在本地自查：
 
-**自动检查（CI 运行 `npm run check`）：**
+```bash
+npm run check                                       # 格式校验
+npm run check:endpoints -- registry/<id>.json       # 线上 402 检查（不会付款）
+```
+
+**自动检查（CI）：**
+
+格式校验（`npm run check`）：
 - [ ] 是合法的 JSON，并且符合 `schema/manifest.schema.json`
 - [ ] `id` 和文件名一致（因此不会与已有应用重复）
 - [ ] 同一应用内 action id 不重复
 - [ ] `input_schema` / `output_schema` 本身是合法的 JSON Schema
 - [ ] `example.request` 符合 `input_schema`，`example.response` 符合 `output_schema`
 
+上架检查（`scripts/check-pr.js`，取自目标分支运行，PR 无法修改它）：
+- [ ] PR 只修改了 `registry/*.json`
+- [ ] 修改已有应用时，`version` 比原来的大
+- [ ] 不带付款请求每个新增或修改的 endpoint，返回 402
+- [ ] 402 里有 `payment.network` 上的 `exact` 付款方式，币种是该网络的官方 USDC，金额等于 `price`
+
 **人工审核：**
-- [ ] 不带付款请求每个 endpoint，返回合法的 402
-- [ ] 402 里的 `network`、`asset`、金额和 manifest 一致
 - [ ] 按 `example.request` 实际付款调用一次，返回结果符合 `output_schema`
 - [ ] `description` 能让 Agent 准确判断什么时候该使用
 
