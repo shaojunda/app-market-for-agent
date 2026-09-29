@@ -3,14 +3,36 @@ name: Check
 on:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 上架检查脚本取自目标分支，PR 无法通过修改脚本绕过检查
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: .base
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+
+      - name: 上架检查（改动范围、版本号、线上 402）
+        run: |
+          if [ -f .base/scripts/check-pr.js ]; then
+            node .base/scripts/check-pr.js ${{ github.event.pull_request.base.sha }}
+          else
+            echo "目标分支还没有 check-pr.js，跳过"
+          fi
+
       - run: npm ci
-      - run: npm run check
+      - name: manifest 格式校验
+        run: npm run check

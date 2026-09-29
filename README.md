@@ -44,8 +44,8 @@ npx skills add shaojunda/app-market-for-agent -g -y -a <agent>
 
 1. 让你的服务支持 x402：未付款的请求返回 `402 Payment Required`，付款后返回结果。
 2. 按照 [manifest 格式规范](schema/manifest.schema.json) 编写 `registry/<id>.json`。可以参考 [`registry/photo-retouch.json`](registry/photo-retouch.json)。
-3. 在本地运行 `npm install && npm run check`，确认校验通过。
-4. 向本仓库提交 PR。CI 会自动校验，人工审核会实际调用一次你的服务。
+3. 在本地运行 `npm install && npm run check && npm run check:endpoints -- registry/<id>.json`，确认格式校验和线上 402 检查都通过。
+4. 向本仓库提交 PR（只包含你的 `registry/<id>.json`）。CI 会自动校验格式、改动范围、版本号，并检查你的服务返回的 402 与 manifest 一致；人工审核会实际付费调用一次。
 
 字段说明、前置条件和审核清单见 [desc.md 的“卖方接入”一节](desc.md#卖方接入)。
 
@@ -65,7 +65,8 @@ desc.md            需求与设计文档
 
 ```bash
 npm install
-npm run check    # 只校验 registry/ 下的 manifest
+npm run check                              # 校验 registry/ 下的 manifest 格式
+npm run check:endpoints -- registry/x.json # 检查服务的 402 响应与 manifest 一致（不付款）
 npm run build    # 校验并生成 dist/
 ```
 
