@@ -52,7 +52,7 @@ node scripts/market.js get <app-id> <action-id>
 把以下信息交给 x402 Skill：
 - `endpoint.url`、`endpoint.method`、`endpoint.content_type`
 - 组装好的请求体
-- 预期价格：`price` 加上 `payment.asset` 和 `payment.network`。如果 402 响应要求的金额高于这个价格，或者收款地址和 `payment.pay_to` 不一致，应当停止并告诉用户。
+- 预期价格：`price` 加上 `payment.asset` 和 `payment.network`。如果 402 响应要求的金额高于这个价格，或者网络、币种和 manifest 不一致，应当停止并告诉用户。收款地址以 402 响应为准。
 
 如果当前环境没有可用的 x402 Skill，告诉用户需要先安装，不要尝试自己签名付款。
 

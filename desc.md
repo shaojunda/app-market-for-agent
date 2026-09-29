@@ -94,7 +94,7 @@ apps/<id>.json           # 详情：完整 manifest（endpoint、schema、示例
 - `schema_version`：registry 格式的版本，用于以后兼容升级。
 - `updated_at`：生成时间，Skill 可以据此判断本地缓存是否过期。
 - `apps[].actions[]`：只保留 `id`、`description`、`price`，足够 Agent 做选择。
-- `apps[].manifest_url`：完整 manifest 的地址，可以是绝对 URL，也可以是相对于 `registry.json` 的路径（如 `apps/photo-retouch.json`）。内容就是卖方提交的 manifest（去掉 `$schema` 字段），`pay_to`、endpoint、schema 都在里面。
+- `apps[].manifest_url`：完整 manifest 的地址，可以是绝对 URL，也可以是相对于 `registry.json` 的路径（如 `apps/photo-retouch.json`）。内容就是卖方提交的 manifest（去掉 `$schema` 字段），endpoint、schema、示例都在里面。
 
 ### 接入方式：两个独立的 Skill
 
@@ -128,7 +128,7 @@ app-market Skill（发现）            x402 Skill（调用 + 支付）
 卖方 Agent 上架前，自己的服务需要满足：
 
 1. **服务已接入 x402**：未付款的请求返回 `402 Payment Required` 以及支付要求；带合法 `X-PAYMENT` 的请求正常返回结果。可以直接使用 x402 官方的服务端中间件（Express、Hono、Next.js 等）。
-2. **有收款钱包**：一个用于接收 USDC 的地址，也就是 402 响应里的 `payTo`。
+2. **有收款钱包**：用于接收 USDC，地址由服务在 402 响应的 `payTo` 中返回，不需要登记到 manifest，可以随时更换。
 3. **有公网 HTTPS endpoint**：服务稳定可访问。
 4. **调用是无状态的单次请求**：一次付款对应一次请求，并在这次响应里返回完整结果。
 5. **文件用 URL 传递**：输入建议同时支持 URL 和 base64；输出建议返回带有效期的 URL，不要直接返回大段 base64。
@@ -143,8 +143,7 @@ app-market Skill（发现）            x402 Skill（调用 + 支付）
 | `version` | ✅ | manifest 版本号，每次修改都要递增 |
 | `tags` | | 分类标签，辅助搜索 |
 | `provider` | ✅ | 卖方信息：名称、联系方式、网站 |
-| `payment.pay_to` | ✅ | 收款地址，必须和 402 响应里的一致 |
-| `payment.network` / `payment.asset` | ✅ | 收款网络和币种，例如 `base` / `USDC` |
+| `payment.network` / `payment.asset` | ✅ | 收款网络和币种，例如 `base` / `USDC`，必须和 402 响应一致。买方据此判断自己的钱包能否付款 |
 | `actions` | ✅ | 应用提供的能力列表。一个应用可以有多个 action，例如“美颜”和“抠图” |
 | `actions[].id` / `description` | ✅ | action 的标识和说明 |
 | `actions[].endpoint` | ✅ | `url`、`method`、`content_type` |
@@ -172,7 +171,6 @@ manifest 使用 JSON 格式。完整的格式规范见 [`schema/manifest.schema.
     "website": "https://example.com"
   },
   "payment": {
-    "pay_to": "0x0000000000000000000000000000000000000000",
     "network": "base",
     "asset": "USDC"
   },
@@ -212,7 +210,6 @@ manifest 使用 JSON 格式。完整的格式规范见 [`schema/manifest.schema.
 格式要点：
 - `price` 必须是**字符串**（如 `"0.05"`），不能写成数字，以免浮点精度问题。
 - `tags`、`id`、`actions[].id` 只能用小写字母、数字和 `-`。
-- `pay_to` 必须是完整的 `0x` 开头 40 位十六进制地址。
 
 ### 示例
 
@@ -234,7 +231,7 @@ manifest 使用 JSON 格式。完整的格式规范见 [`schema/manifest.schema.
 
 **人工审核：**
 - [ ] 不带付款请求每个 endpoint，返回合法的 402
-- [ ] 402 里的 `payTo`、`network`、`asset`、金额和 manifest 一致
+- [ ] 402 里的 `network`、`asset`、金额和 manifest 一致
 - [ ] 按 `example.request` 实际付款调用一次，返回结果符合 `output_schema`
 - [ ] `description` 能让 Agent 准确判断什么时候该使用
 

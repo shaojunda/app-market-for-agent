@@ -15,7 +15,6 @@
     "contact": "api@paperlabs.example"
   },
   "payment": {
-    "pay_to": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
     "network": "base",
     "asset": "USDC"
   },
