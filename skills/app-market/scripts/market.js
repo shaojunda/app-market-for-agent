@@ -46,8 +46,25 @@ async function loadJson(location) {
   }
 }
 
+// 本脚本支持的 registry 格式版本；registry 格式有不兼容的改动时递增
+const SUPPORTED_SCHEMA_VERSION = 1;
+const UPDATE_COMMAND = "npx skills update -g -y";
+
+// 需要告诉用户的提示，会附加在输出的 update_notice 字段里
+let updateNotice;
+
+function checkSchemaVersion(registry) {
+  const version = Number(registry.schema_version);
+  if (!Number.isInteger(version) || version <= SUPPORTED_SCHEMA_VERSION) return;
+  updateNotice =
+    `App Market 的数据格式已升级到版本 ${version}，当前 Skill 只支持到版本 ${SUPPORTED_SCHEMA_VERSION}，结果可能不完整或出错。` +
+    `请更新 app-market Skill：运行 \`${UPDATE_COMMAND}\`，其他安装方式见 https://shaojunda.github.io/app-market-for-agent/install.md`;
+  process.stderr.write(`提示：${updateNotice}\n`);
+}
+
 async function loadRegistry() {
   const registry = await loadJson(REGISTRY);
+  checkSchemaVersion(registry);
   if (!Array.isArray(registry.apps)) throw new Error("registry 格式错误：缺少 apps 数组");
   return registry;
 }
@@ -80,7 +97,8 @@ function score(app, keywords) {
 }
 
 function print(data) {
-  process.stdout.write(JSON.stringify(data, null, 2) + "\n");
+  const output = updateNotice ? { update_notice: updateNotice, ...data } : data;
+  process.stdout.write(JSON.stringify(output, null, 2) + "\n");
 }
 
 async function cmdList() {

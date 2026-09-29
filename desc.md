@@ -92,6 +92,9 @@ apps/<id>.json           # 详情：完整 manifest（endpoint、schema、示例
 
 索引字段说明：
 - `schema_version`：registry 格式的版本，用于以后兼容升级。
+  - 只新增可选字段时**不需要**升级版本，旧版 Skill 会忽略不认识的字段。
+  - 删除或重命名字段、改变字段含义等不兼容改动时，同时递增 `scripts/build.js` 中生成的 `schema_version` 和 `skills/app-market/scripts/market.js` 中的 `SUPPORTED_SCHEMA_VERSION`。
+  - 旧版 Skill 读到更高的版本时，会在输出中附加 `update_notice`，由 Agent 提示用户更新 Skill。
 - `updated_at`：生成时间，Skill 可以据此判断本地缓存是否过期。
 - `apps[].actions[]`：只保留 `id`、`description`、`price`，足够 Agent 做选择。
 - `apps[].manifest_url`：完整 manifest 的地址，可以是绝对 URL，也可以是相对于 `registry.json` 的路径（如 `apps/photo-retouch.json`）。内容就是卖方提交的 manifest（去掉 `$schema` 字段），endpoint、schema、示例都在里面。
