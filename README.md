@@ -38,12 +38,12 @@ npx skills add shaojunda/app-market-for-agent -g -y -a <agent>
 
 运行 Skill 需要 Node.js 18 或更高版本。调用服务和付款还需要一个支持 x402 协议的工具，Market 不限定用哪一个，可选方案见 [install.md 的“支付工具”一节](site/install.md#支付工具)。
 
-安装后，Agent 遇到自己做不了的任务（例如修图），会搜索 Market，并在付款前告诉你服务名称和价格，等你确认。
+安装后，Agent 遇到自己做不了的任务（例如起名），会搜索 Market，并在付款前告诉你服务名称和价格，等你确认。
 
 ## 卖方：上架应用
 
 1. 让你的服务支持 x402：未付款的请求返回 `402 Payment Required`，付款后返回结果。
-2. 按照 [manifest 格式规范](schema/manifest.schema.json) 编写 `registry/<id>.json`。可以参考 [`registry/photo-retouch.json`](registry/photo-retouch.json)。
+2. 按照 [manifest 格式规范](schema/manifest.schema.json) 编写 `registry/<id>.json`。可以参考 [`registry/chinese-naming-demo.json`](registry/chinese-naming-demo.json)（对应的服务代码见 [x402-naming-demo](https://github.com/shaojunda/x402-naming-demo)）。
 3. 在本地运行 `npm install && npm run check && npm run check:endpoints -- registry/<id>.json`，确认格式校验和线上 402 检查都通过。
 4. 向本仓库提交 PR（只包含你的 `registry/<id>.json`）。CI 会自动校验格式、改动范围、版本号，并检查你的服务返回的 402 与 manifest 一致；人工审核会实际付费调用一次。
 
@@ -73,7 +73,7 @@ npm run build    # 校验并生成 dist/
 用本地构建结果测试 Skill：
 
 ```bash
-APP_MARKET_REGISTRY=dist/registry.json node skills/app-market/scripts/market.js search 修图
+APP_MARKET_REGISTRY=dist/registry.json node skills/app-market/scripts/market.js search 起名
 ```
 
 推送到 `main` 后，GitHub Actions 会自动构建并部署到 Pages；PR 只运行校验。

@@ -2,7 +2,7 @@
 
 本文档写给 Agent 阅读。App Market Skill 遵循通用的 Agent Skill 格式（一个包含 `SKILL.md` 的目录），可用于 Claude Code、Codex、Cursor、Gemini CLI、GitHub Copilot、OpenCode、Windsurf、Cline 等支持 Skill 的 Agent。按照你所在的环境，选择下面一种方式即可。
 
-App Market Skill 用于在 App Market 中搜索其他 Agent 提供的付费服务（修图、文字识别、语音合成等），并获取调用所需的 endpoint 和参数格式。它只负责发现服务；调用和付款需要一个支持 x402 协议的工具，见文末“支付工具”一节。
+App Market Skill 用于在 App Market 中搜索其他 Agent 提供的按次付费服务，并获取调用所需的 endpoint 和参数格式。它只负责发现服务；调用和付款需要一个支持 x402 协议的工具，见文末“支付工具”一节。
 
 ## 前置条件
 
@@ -53,7 +53,7 @@ Claude Code 用户也可以通过插件市场安装，之后能用 `/plugin` 统
 App Market 本身只是公开的静态 JSON，不安装任何东西也能使用：
 
 1. 读取应用索引：https://shaojunda.github.io/app-market-for-agent/registry.json
-2. 根据 `description` 选出应用后，读取完整信息：`https://shaojunda.github.io/app-market-for-agent/` 加上索引里的 `manifest_url`（如 `apps/photo-retouch.json`）
+2. 根据 `description` 选出应用后，读取完整信息：`https://shaojunda.github.io/app-market-for-agent/` 加上索引里的 `manifest_url`（如 `apps/chinese-naming-demo.json`）
 3. 按照 [SKILL.md](https://raw.githubusercontent.com/shaojunda/app-market-for-agent/main/skills/app-market/SKILL.md) 中的“使用流程”组装请求并调用（跳过其中运行脚本的步骤）
 
 ## 验证安装

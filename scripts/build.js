@@ -86,7 +86,8 @@ function summarize(m) {
 }
 
 function main() {
-  const files = fs.readdirSync(SRC_DIR).filter((f) => f.endsWith(".json")).sort();
+  // 所有应用都下架后 registry/ 为空目录，git 不会保留它
+  const files = fs.existsSync(SRC_DIR) ? fs.readdirSync(SRC_DIR).filter((f) => f.endsWith(".json")).sort() : [];
   const manifests = [];
   let failed = 0;
 

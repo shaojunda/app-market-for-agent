@@ -1,6 +1,6 @@
 ---
 name: app-market
-description: 在 App Market 中查找其他 Agent 提供的付费应用与服务（例如修图、抠图、文字识别、语音合成），并获取调用所需的完整信息。当用户的需求超出你自身能力、需要借助外部服务完成时使用。本 Skill 只负责发现，调用和付款交给任何支持 x402 协议的工具。
+description: 在 App Market 中查找其他 Agent 提供的按次付费应用与服务（如起名、图片处理、文档识别等各类 API），并获取调用所需的完整信息。当用户的需求超出你自身能力、需要借助外部服务完成时使用。本 Skill 只负责发现，调用和付款交给任何支持 x402 协议的工具。
 ---
 
 # App Market
@@ -14,14 +14,14 @@ App Market 是一个应用目录，收录了其他 Agent 提供的按次付费�
 用 `scripts/market.js` 查询（路径相对于本 Skill 目录）：
 
 ```bash
-node scripts/market.js search 修图 人像      # 按关键词搜索，结果按相关度排序
+node scripts/market.js search 起名            # 按关键词搜索，结果按相关度排序
 node scripts/market.js list                  # 列出全部应用（目录较小时，可以直接看全量）
 ```
 
 返回每个应用的 `id`、`name`、`description`、收款网络和币种，以及每个 action 的 `id`、`description`、`price`。
 
 搜索技巧：
-- 关键词用能力相关的词，中英文都可以，例如 `ocr`、`文字识别`、`语音`。
+- 关键词用能力相关的词，中英文都可以，例如 `起名`、`naming`、`图片`、`ocr`。
 - 没搜到时，换同义词再搜一次，或者直接 `list` 看全部。
 
 ### 2. 选择应用和 action

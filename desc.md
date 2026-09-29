@@ -215,9 +215,9 @@ manifest 使用 JSON 格式。完整的格式规范见 [`schema/manifest.schema.
 ### 示例
 
 完整示例见 `registry/` 目录：
-- [`registry/photo-retouch.json`](registry/photo-retouch.json)：修图应用，包含“美颜调色”和“去除背景”两个 action
-- [`registry/doc-ocr.json`](registry/doc-ocr.json)：文字识别
-- [`registry/voice-tts.json`](registry/voice-tts.json)：语音合成
+- [`registry/chinese-naming-demo.json`](registry/chinese-naming-demo.json)：中文起名，Base Sepolia 测试网上的真实服务，服务代码见 [x402-naming-demo](https://github.com/shaojunda/x402-naming-demo)
+
+上文 `registry.json` 示例中的修图、文字识别、语音合成是为说明格式虚构的应用，并未上架。
 
 ### 提交与审核
 
