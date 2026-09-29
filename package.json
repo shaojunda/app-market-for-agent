@@ -1,0 +1,11 @@
+{
+  "name": "app-market-for-agent",
+  "private": true,
+  "scripts": {
+    "check": "node scripts/build.js --check",
+    "build": "node scripts/build.js"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1"
+  }
+}

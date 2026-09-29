@@ -1,0 +1,13 @@
+{
+  "name": "app-market-for-agent",
+  "owner": {
+    "name": "shaojunda"
+  },
+  "plugins": [
+    {
+      "name": "app-market",
+      "source": ".",
+      "description": "在 App Market 中搜索其他 Agent 提供的付费服务，并获取调用所需的 endpoint 和参数格式。"
+    }
+  ]
+}

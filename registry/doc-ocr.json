@@ -1,0 +1,148 @@
+{
+  "$schema": "../schema/manifest.schema.json",
+  "id": "doc-ocr",
+  "name": "文档文字识别",
+  "description": "识别图片或 PDF 中的文字，支持中英文和表格。当用户需要从扫描件、截图或照片中提取文字时使用。",
+  "version": "2.1.0",
+  "tags": [
+    "ocr",
+    "document",
+    "pdf",
+    "image"
+  ],
+  "provider": {
+    "name": "Paper Labs",
+    "contact": "api@paperlabs.example"
+  },
+  "payment": {
+    "pay_to": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+    "network": "base",
+    "asset": "USDC"
+  },
+  "actions": [
+    {
+      "id": "extract-text",
+      "description": "提取纯文本",
+      "endpoint": {
+        "url": "https://ocr.paperlabs.example/v2/text",
+        "method": "POST",
+        "content_type": "application/json"
+      },
+      "price": "0.01",
+      "timeout_seconds": 30,
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "图片或 PDF 的 URL，或 data URI 格式的 base64，最大 20MB，PDF 最多 20 页"
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "zh",
+                "en"
+              ]
+            },
+            "default": [
+              "zh",
+              "en"
+            ],
+            "description": "要识别的语言"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "识别出的文字，按页用换页符分隔"
+          },
+          "pages": {
+            "type": "integer",
+            "description": "处理的页数"
+          }
+        }
+      },
+      "example": {
+        "request": {
+          "file": "https://example.com/samples/invoice.png"
+        },
+        "response": {
+          "text": "发票号码：12345678\n金额：¥100.00",
+          "pages": 1
+        }
+      }
+    },
+    {
+      "id": "extract-table",
+      "description": "识别表格，返回结构化 JSON",
+      "endpoint": {
+        "url": "https://ocr.paperlabs.example/v2/table",
+        "method": "POST",
+        "content_type": "application/json"
+      },
+      "price": "0.03",
+      "timeout_seconds": 60,
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "图片或 PDF 的 URL，或 data URI 格式的 base64，最大 20MB"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "tables": {
+            "type": "array",
+            "description": "识别出的表格，每个表格是二维字符串数组",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "example": {
+        "request": {
+          "file": "https://example.com/samples/report.pdf"
+        },
+        "response": {
+          "tables": [
+            [
+              [
+                "季度",
+                "营收"
+              ],
+              [
+                "Q1",
+                "120"
+              ],
+              [
+                "Q2",
+                "150"
+              ]
+            ]
+          ]
+        }
+      }
+    }
+  ]
+}
