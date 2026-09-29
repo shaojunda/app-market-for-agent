@@ -1,0 +1,89 @@
+{
+  "$schema": "../schema/manifest.schema.json",
+  "id": "chinese-naming-demo",
+  "name": "中文起名（测试网 demo）",
+  "description": "根据出生日期和性别生成一个中文名字，并解释每个字的寓意。当用户需要给孩子或角色起中文名字时使用。这是 Base Sepolia 测试网上的演示服务，只收测试 USDC，名字由规则生成，仅供娱乐。",
+  "version": "1.0.0",
+  "tags": ["naming", "chinese", "demo", "testnet"],
+  "provider": {
+    "name": "shaojunda",
+    "contact": "https://github.com/shaojunda/x402-naming-demo/issues",
+    "website": "https://github.com/shaojunda/x402-naming-demo"
+  },
+  "payment": {
+    "network": "eip155:84532",
+    "asset": "USDC"
+  },
+  "actions": [
+    {
+      "id": "generate-name",
+      "description": "输入出生日期和性别（可选姓氏），返回一个名字及寓意",
+      "endpoint": {
+        "url": "https://x402-naming-demo.vercel.app/v1/name",
+        "method": "POST",
+        "content_type": "application/json"
+      },
+      "price": "0.01",
+      "timeout_seconds": 30,
+      "input_schema": {
+        "type": "object",
+        "required": ["birth_date", "gender"],
+        "additionalProperties": false,
+        "properties": {
+          "birth_date": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "出生日期，格式 YYYY-MM-DD，范围 1900 年至明年"
+          },
+          "gender": {
+            "type": "string",
+            "enum": ["male", "female"],
+            "description": "性别"
+          },
+          "surname": {
+            "type": "string",
+            "pattern": "^[\\u4e00-\\u9fa5]{1,2}$",
+            "description": "姓氏，1 到 2 个汉字。提供时返回的 name 会带上姓氏"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "required": ["name", "given_name", "meaning"],
+        "properties": {
+          "name": { "type": "string", "description": "完整名字（有姓氏时包含姓氏）" },
+          "given_name": { "type": "string", "description": "名（不含姓氏），两个字" },
+          "meaning": { "type": "string", "description": "名字寓意的整体解释" },
+          "characters": {
+            "type": "array",
+            "description": "每个字的来源和寓意",
+            "items": {
+              "type": "object",
+              "properties": {
+                "char": { "type": "string" },
+                "meaning": { "type": "string" },
+                "source": { "type": "string" }
+              }
+            }
+          },
+          "season": { "type": "string", "enum": ["spring", "summer", "autumn", "winter"], "description": "出生季节" },
+          "note": { "type": "string", "description": "说明" }
+        }
+      },
+      "example": {
+        "request": { "birth_date": "2024-03-15", "gender": "female", "surname": "张" },
+        "response": {
+          "name": "张芷安",
+          "given_name": "芷安",
+          "meaning": "生于春季。「芷」取白芷，香草，喻品行高洁；「安」寓意平安顺遂。",
+          "characters": [
+            { "char": "芷", "meaning": "白芷，香草，喻品行高洁", "source": "春季意象" },
+            { "char": "安", "meaning": "平安顺遂", "source": "品格祝愿" }
+          ],
+          "season": "spring",
+          "note": "基于出生季节和性别的规则生成，仅供娱乐参考。"
+        }
+      }
+    }
+  ]
+}
