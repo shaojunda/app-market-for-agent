@@ -76,7 +76,7 @@ App Market Skill 只负责发现服务，调用和付款需要一个支持 [x402
 
 | 方案 | 适合谁 | 钱包 | 安装 |
 |---|---|---|---|
-| [x402-pay](https://github.com/shaojunda/x402-pay) | 想用自己的私钥，并需要单笔限额 | 自己的 EVM 私钥（环境变量 `X402_PRIVATE_KEY`） | `npx skills add shaojunda/x402-pay -g -y -a <agent>` |
+| [x402-pay](https://github.com/shaojunda/x402-pay) | 想用自己的私钥，并需要单笔限额 | 自己的 EVM 私钥（配置文件 `~/.config/x402-pay/config.json` 或环境变量 `X402_PRIVATE_KEY`） | `npx skills add shaojunda/x402-pay -g -y -a <agent>` |
 | [Coinbase Agentic Wallet Skills](https://github.com/coinbase/agentic-wallet-skills) | 不想自己管私钥 | Coinbase 托管钱包，邮箱验证码登录，可以用 Coinbase Onramp 充值 | `npx skills add coinbase/agentic-wallet-skills` |
 | [官方 x402 客户端库](https://github.com/x402-foundation/x402) `@x402/fetch` / `@x402/axios` | 想自己写调用代码、自己管私钥 | 自己的 EVM 私钥 | `npm i @x402/fetch @x402/evm viem` |
 | [Coinbase Payments MCP](https://github.com/coinbase/payments-mcp) | 只支持 MCP、不能执行脚本的客户端 | Coinbase 托管钱包，邮箱登录 | `npx @coinbase/payments-mcp`，按其文档为你的客户端生成配置 |
