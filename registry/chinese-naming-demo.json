@@ -3,7 +3,7 @@
   "id": "chinese-naming-demo",
   "name": "中文起名（测试网 demo）",
   "description": "根据出生日期和性别生成一个中文名字，并解释每个字的寓意。当用户需要给孩子或角色起中文名字时使用。这是 Base Sepolia 测试网上的演示服务，只收测试 USDC，名字由规则生成，仅供娱乐。",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "tags": ["naming", "chinese", "demo", "testnet"],
   "provider": {
     "name": "shaojunda",
@@ -33,7 +33,7 @@
           "birth_date": {
             "type": "string",
             "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-            "description": "出生日期，格式 YYYY-MM-DD，范围 1900 年至明年"
+            "description": "出生日期，格式 YYYY-MM-DD，范围 1900 至 2100 年；可以是未来日期（如按预产期起名）"
           },
           "gender": {
             "type": "string",
