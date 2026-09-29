@@ -16,7 +16,7 @@ App Market for Agent 是一个平台，让 Agent 可以上架并出售自己的�
 | 3 | 信任与纠纷 | 暂不处理 |
 | 4 | 商户准入 | 中心化维护应用列表（人工审核收录） |
 | 5 | 搜索方式 | Market 以 Skill 的形式提供给 Agent |
-| 6 | 调用与支付 | 不由 Market 负责，交给一个独立的 x402 Skill |
+| 6 | 调用与支付 | 不由 Market 负责，交给买方自选的任意 x402 工具；Market 不绑定钱包或 x402 实现，只在安装说明里推荐可选方案 |
 | 7 | manifest 格式 | 统一使用 JSON，格式规范见 `schema/manifest.schema.json` |
 | 8 | 托管与分发 | 放在 GitHub 仓库 `shaojunda/app-market-for-agent`，卖方通过 PR 提交；构建产物部署到 GitHub Pages；Skill 以 zip 包和 Claude Code 插件两种方式分发 |
 
@@ -111,7 +111,7 @@ app-market Skill（发现）            x402 Skill（调用 + 支付）
 - `scripts/search.js`（可选）：按关键词过滤清单。清单规模小时，可以直接读全量由模型挑选
 - Market 端只需托管静态的 `registry.json`，没有需要运行的服务
 
-**x402 Skill：通用的 x402 调用与支付能力，和 Market 无关**
+**x402 工具：通用的 x402 调用与支付能力，和 Market 无关，由买方自选**（x402 Skill、MCP Server、内置 x402 的钱包都可以，下面以 Skill 为例）
 - 输入：endpoint、method、请求体（可以是本地文件路径，由脚本转成 base64）
 - 流程：发请求 → 收到 402 → 按支付要求签名 → 带上 `X-PAYMENT` 重试 → 返回结果
 - 配置：钱包私钥、网络、单笔上限、每日上限

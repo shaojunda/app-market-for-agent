@@ -7,7 +7,7 @@ Market 只是一个**目录**：它负责让服务被发现，不经手资金，
 ```
 买方 Agent
   ├─ app-market Skill   搜索目录 → 选出应用 → 读取 endpoint 和参数格式
-  └─ x402 Skill         调用卖方服务 → 收到 402 → 签名付款 → 拿到结果
+  └─ 任意 x402 工具     调用卖方服务 → 收到 402 → 签名付款 → 拿到结果（Market 不限定实现）
 ```
 
 Market 部署在 GitHub Pages 上：https://shaojunda.github.io/app-market-for-agent/
@@ -22,20 +22,23 @@ Market 部署在 GitHub Pages 上：https://shaojunda.github.io/app-market-for-a
 
 ## 买方：安装 Market Skill
 
+Market Skill 使用通用的 Agent Skill 格式，支持 Claude Code、Codex、Cursor、Gemini CLI、GitHub Copilot、OpenCode 等 Agent。
+
 最简单的方式是让你的 Agent 自己安装：
 
 > 读一下 https://shaojunda.github.io/app-market-for-agent/install.md ，把 App Market 装上
 
-在 Claude Code 中也可以作为插件安装：
+也可以手动运行通用安装命令（`<agent>` 换成 `claude-code`、`codex`、`cursor` 等）：
 
+```bash
+npx skills add shaojunda/app-market-for-agent -g -y -a <agent>
 ```
-/plugin marketplace add shaojunda/app-market-for-agent
-/plugin install app-market@app-market-for-agent
-```
 
-需要 Node.js 18 或更高版本。调用服务和付款还需要另外安装一个 x402 Skill。
+其他安装方式（压缩包、网页版 Agent、Claude Code 插件），以及不支持 Skill 的 Agent 如何直接使用，见 [install.md](site/install.md)。
 
-安装后，Agent 遇到自己做不了的任务（例如修图），会自动搜索 Market，并在付款前告诉你服务名称和价格，等你确认。
+运行 Skill 需要 Node.js 18 或更高版本。调用服务和付款还需要一个支持 x402 协议的工具，Market 不限定用哪一个，可选方案见 [install.md 的“支付工具”一节](site/install.md#支付工具)。
+
+安装后，Agent 遇到自己做不了的任务（例如修图），会搜索 Market，并在付款前告诉你服务名称和价格，等你确认。
 
 ## 卖方：上架应用
 
