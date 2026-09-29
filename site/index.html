@@ -91,7 +91,7 @@
           `<li><span><code>${esc(a.id)}</code> ${esc(a.description)}</span><span class="price">${esc(a.price)} ${esc(app.payment.asset)}</span></li>`
         ).join("");
         return `<div class="app">
-          <div class="app-head"><span class="app-name">${esc(app.name)}</span><span class="app-meta">${esc(app.provider)} · ${unit}</span></div>
+          <div class="app-head"><span class="app-name">${esc(app.name)}</span><code>${esc(app.id)}</code><span class="app-meta">${esc(app.provider)} · ${unit}</span></div>
           <div>${esc(app.description)}</div>
           <ul class="actions">${actions}</ul>
         </div>`;

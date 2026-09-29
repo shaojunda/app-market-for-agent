@@ -40,6 +40,16 @@ npx skills add shaojunda/app-market-for-agent -g -y -a <agent>
 
 安装后，Agent 遇到自己做不了的任务（例如起名），会搜索 Market，并在付款前告诉你服务名称和价格，等你确认。
 
+几种常见的用法：
+
+| 说法 | Agent 的行为 |
+|---|---|
+| “用 App Market 的起名服务帮我起个名字” | 搜索起名服务；只有一个就直接用，有多个就列出来让你选 |
+| “用 App Market 的 `chinese-naming-demo` 帮我起个名字” | 按 id 直接使用这个服务，不再搜索；id 不存在时会告诉你，不会换成别的服务 |
+| “用 App Market 里最便宜的起名服务” | 按你的偏好选择，并说明选了哪个 |
+
+应用 id 可以在 [Market 首页](https://shaojunda.github.io/app-market-for-agent/) 查到，Agent 每次使用服务后也会告诉你。
+
 ## 卖方：上架应用
 
 1. 让你的服务支持 x402：未付款的请求返回 `402 Payment Required`，付款后返回结果。

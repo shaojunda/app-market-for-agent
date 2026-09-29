@@ -84,7 +84,8 @@ function summarize(app) {
 function score(app, keywords) {
   const name = (app.name || "").toLowerCase();
   const tags = (app.tags || []).map((t) => t.toLowerCase());
-  const text = [app.description, ...(app.actions || []).map((a) => `${a.id} ${a.description}`)]
+  // 描述之外也匹配 id 和提供方，方便用户按 id 或“某某提供的”来找
+  const text = [app.id, app.provider, app.description, ...(app.actions || []).map((a) => `${a.id} ${a.description}`)]
     .join(" ")
     .toLowerCase();
   let total = 0;
