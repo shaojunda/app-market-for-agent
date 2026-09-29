@@ -54,6 +54,13 @@ node scripts/market.js get <app-id> <action-id>
 - 组装好的请求体
 - 预期价格：`price` 加上 `payment.asset` 和 `payment.network`。如果 402 响应要求的金额高于这个价格，或者网络、币种和 manifest 不一致，应当停止并告诉用户。收款地址以 402 响应为准。
 
+例如使用 [x402-pay](https://github.com/shaojunda/x402-pay) Skill 时：
+
+```bash
+node <x402-pay 目录>/scripts/pay.mjs pay --url <endpoint.url> --method <endpoint.method> \
+  --max-amount <price> --network <payment.network> --body '<请求体 JSON>'
+```
+
 不要绕过 x402 工具直接请求 endpoint 或自己签名付款。
 
 如果当前环境没有任何支持 x402 的工具，告诉用户需要先准备一个，可选方案见 https://shaojunda.github.io/app-market-for-agent/install.md 的“支付工具”一节。用户的钱包里需要有 manifest 中 `payment.network` 网络上的 `payment.asset`（目前是 Base 上的 USDC）。

@@ -60,13 +60,13 @@
       "properties": {
         "network": {
           "type": "string",
-          "enum": ["base", "base-sepolia"],
-          "description": "收款网络。"
+          "enum": ["eip155:8453", "eip155:84532"],
+          "description": "收款网络，使用 x402 v2 的 CAIP-2 格式，与 402 响应中的 network 字段一致。eip155:8453 为 Base 主网，eip155:84532 为 Base Sepolia 测试网。"
         },
         "asset": {
           "type": "string",
           "enum": ["USDC"],
-          "description": "收款币种。"
+          "description": "收款币种，指该网络上的官方 USDC 合约。"
         }
       }
     },

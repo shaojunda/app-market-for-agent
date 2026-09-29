@@ -52,7 +52,7 @@ apps/<id>.json           # 详情：完整 manifest（endpoint、schema、示例
       "version": "1.0.0",
       "tags": ["image", "photo", "retouch", "background-removal"],
       "provider": "Example Studio",
-      "payment": { "network": "base", "asset": "USDC" },
+      "payment": { "network": "eip155:8453", "asset": "USDC" },
       "actions": [
         { "id": "retouch", "description": "人像美颜和调色，返回处理后的图片", "price": "0.05" },
         { "id": "remove-background", "description": "去除人像背景，返回透明背景 PNG", "price": "0.02" }
@@ -66,7 +66,7 @@ apps/<id>.json           # 详情：完整 manifest（endpoint、schema、示例
       "version": "2.1.0",
       "tags": ["ocr", "document", "pdf", "image"],
       "provider": "Paper Labs",
-      "payment": { "network": "base", "asset": "USDC" },
+      "payment": { "network": "eip155:8453", "asset": "USDC" },
       "actions": [
         { "id": "extract-text", "description": "提取纯文本", "price": "0.01" },
         { "id": "extract-table", "description": "识别表格，返回结构化 JSON", "price": "0.03" }
@@ -80,7 +80,7 @@ apps/<id>.json           # 详情：完整 manifest（endpoint、schema、示例
       "version": "1.2.0",
       "tags": ["audio", "tts", "voice"],
       "provider": "Sonic Works",
-      "payment": { "network": "base", "asset": "USDC" },
+      "payment": { "network": "eip155:8453", "asset": "USDC" },
       "actions": [
         { "id": "synthesize", "description": "合成语音，返回 MP3 地址；每次最多 5000 字", "price": "0.02" }
       ],
@@ -113,7 +113,7 @@ app-market Skill（发现）            x402 Skill（调用 + 支付）
 
 **x402 工具：通用的 x402 调用与支付能力，和 Market 无关，由买方自选**（x402 Skill、MCP Server、内置 x402 的钱包都可以，下面以 Skill 为例）
 - 输入：endpoint、method、请求体（可以是本地文件路径，由脚本转成 base64）
-- 流程：发请求 → 收到 402 → 按支付要求签名 → 带上 `X-PAYMENT` 重试 → 返回结果
+- 流程：发请求 → 收到 402（支付要求在 `PAYMENT-REQUIRED` 响应头中）→ 按支付要求签名 → 带上 `PAYMENT-SIGNATURE` 请求头重试 → 返回结果（结算信息在 `PAYMENT-RESPONSE` 响应头中）
 - 配置：钱包私钥、网络、单笔上限、每日上限
 - 可以复用已有的实现，也能单独调用 Market 以外的任何 x402 服务
 
@@ -127,7 +127,7 @@ app-market Skill（发现）            x402 Skill（调用 + 支付）
 
 卖方 Agent 上架前，自己的服务需要满足：
 
-1. **服务已接入 x402**：未付款的请求返回 `402 Payment Required` 以及支付要求；带合法 `X-PAYMENT` 的请求正常返回结果。可以直接使用 x402 官方的服务端中间件（Express、Hono、Next.js 等）。
+1. **服务已接入 x402**：未付款的请求返回 `402 Payment Required` 以及支付要求；带合法付款签名的请求正常返回结果。建议使用 x402 v2（请求头 `PAYMENT-SIGNATURE`，v1 为 `X-PAYMENT`）。可以直接使用 x402 官方的服务端中间件（Express、Hono、Next.js 等）。
 2. **有收款钱包**：用于接收 USDC，地址由服务在 402 响应的 `payTo` 中返回，不需要登记到 manifest，可以随时更换。
 3. **有公网 HTTPS endpoint**：服务稳定可访问。
 4. **调用是无状态的单次请求**：一次付款对应一次请求，并在这次响应里返回完整结果。
@@ -143,7 +143,7 @@ app-market Skill（发现）            x402 Skill（调用 + 支付）
 | `version` | ✅ | manifest 版本号，每次修改都要递增 |
 | `tags` | | 分类标签，辅助搜索 |
 | `provider` | ✅ | 卖方信息：名称、联系方式、网站 |
-| `payment.network` / `payment.asset` | ✅ | 收款网络和币种，例如 `base` / `USDC`，必须和 402 响应一致。买方据此判断自己的钱包能否付款 |
+| `payment.network` / `payment.asset` | ✅ | 收款网络和币种，例如 `eip155:8453`（Base 主网）/ `USDC`。网络使用 x402 v2 的 CAIP-2 格式，必须和 402 响应一致。买方据此判断自己的钱包能否付款 |
 | `actions` | ✅ | 应用提供的能力列表。一个应用可以有多个 action，例如“美颜”和“抠图” |
 | `actions[].id` / `description` | ✅ | action 的标识和说明 |
 | `actions[].endpoint` | ✅ | `url`、`method`、`content_type` |
@@ -171,7 +171,7 @@ manifest 使用 JSON 格式。完整的格式规范见 [`schema/manifest.schema.
     "website": "https://example.com"
   },
   "payment": {
-    "network": "base",
+    "network": "eip155:8453",
     "asset": "USDC"
   },
   "actions": [
@@ -210,6 +210,7 @@ manifest 使用 JSON 格式。完整的格式规范见 [`schema/manifest.schema.
 格式要点：
 - `price` 必须是**字符串**（如 `"0.05"`），不能写成数字，以免浮点精度问题。
 - `tags`、`id`、`actions[].id` 只能用小写字母、数字和 `-`。
+- `payment.network` 使用 CAIP-2 格式：Base 主网写 `eip155:8453`，Base Sepolia 测试网写 `eip155:84532`。
 
 ### 示例
 

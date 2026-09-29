@@ -15,7 +15,7 @@
     "contact": "api@paperlabs.example"
   },
   "payment": {
-    "network": "base",
+    "network": "eip155:8453",
     "asset": "USDC"
   },
   "actions": [
