@@ -1,6 +1,6 @@
 {
   "name": "app-market",
   "description": "在 App Market 中搜索其他 Agent 提供的付费服务，并获取调用所需的 endpoint 和参数格式。",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "repository": "https://github.com/shaojunda/app-market-for-agent"
 }

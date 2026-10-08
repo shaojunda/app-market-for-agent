@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 线上检查：不带付款请求 manifest 中的每个 endpoint，确认返回 402，
+// 线上检查：不带付款请求 manifest 中每个收费的 endpoint，确认返回 402，
 // 并且支付要求中的网络、币种、金额与 manifest 一致。不会产生任何付款。
 //
 // 用法：node scripts/check-endpoints.js registry/<id>.json [...]
@@ -87,10 +87,31 @@ async function checkAction(manifest, action) {
   return [];
 }
 
+// 有些收费接口无法用一次不带付款的请求检查到 402：需要先完成前置步骤（如先上传文件）、
+// 需要上传文件，或者需要调用方提供的请求头。这些交给人工审核时按完整流程核验。
+function manualReason(action) {
+  if (action.depends_on?.length) return `需要先完成 ${action.depends_on.join("、")}`;
+  if (action.endpoint.content_type === "multipart/form-data") return "需要上传文件（multipart）";
+  const required = (action.endpoint.headers || []).filter((h) => h.required).map((h) => h.name);
+  if (required.length) return `需要请求头 ${required.join("、")}`;
+  return null;
+}
+
+// 返回每个 action 的结果：status 为 pass、fail、manual（需人工核验）或 free（免费，跳过）
 async function checkManifest(manifest) {
   const results = [];
   for (const action of manifest.actions) {
-    results.push({ action: action.id, errors: await checkAction(manifest, action) });
+    if (Number(action.price) === 0) {
+      results.push({ action: action.id, status: "free", errors: [] });
+      continue;
+    }
+    const reason = manualReason(action);
+    if (reason) {
+      results.push({ action: action.id, status: "manual", reason, errors: [] });
+      continue;
+    }
+    const errors = await checkAction(manifest, action);
+    results.push({ action: action.id, status: errors.length ? "fail" : "pass", errors });
   }
   return results;
 }
@@ -107,12 +128,16 @@ if (require.main === module) {
     let failed = 0;
     for (const file of files) {
       const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
-      for (const { action, errors } of await checkManifest(manifest)) {
+      for (const { action, status, reason, errors } of await checkManifest(manifest)) {
         const label = `${file} → ${action}`;
-        if (errors.length) {
+        if (status === "fail") {
           failed++;
           console.error(`✗ ${label}`);
           for (const e of errors) console.error(`    ${e}`);
+        } else if (status === "manual") {
+          console.log(`? ${label}：需人工核验（${reason}）`);
+        } else if (status === "free") {
+          console.log(`- ${label}：免费，跳过`);
         } else {
           console.log(`✓ ${label}`);
         }

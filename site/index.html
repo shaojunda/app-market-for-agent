@@ -88,7 +88,7 @@
       box.innerHTML = reg.apps.map((app) => {
         const unit = `${esc(app.payment.asset)} · ${esc(NETWORKS[app.payment.network] || app.payment.network)}`;
         const actions = app.actions.map((a) =>
-          `<li><span><code>${esc(a.id)}</code> ${esc(a.description)}</span><span class="price">${esc(a.price)} ${esc(app.payment.asset)}</span></li>`
+          `<li><span><code>${esc(a.id)}</code> ${esc(a.description)}</span><span class="price">${Number(a.price) === 0 ? "免费" : `${esc(a.price)} ${esc(app.payment.asset)}`}</span></li>`
         ).join("");
         return `<div class="app">
           <div class="app-head"><span class="app-name">${esc(app.name)}</span><code>${esc(app.id)}</code><span class="app-meta">${esc(app.provider)} · ${unit}</span></div>
