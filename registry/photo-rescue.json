@@ -2,8 +2,8 @@
   "$schema": "https://shaojunda.github.io/app-market-for-agent/schema/manifest.schema.json",
   "id": "photo-rescue",
   "name": "PhotoRescue 照片自动修复（测试网）",
-  "description": "为无法重拍的照片提供自动修复。当用户需要修复照片时使用。先以 multipart 上传原始照片，再通过 x402 支付创建外部修复任务，随后查询状态并下载结果；付费响应只返回任务标识。使用开发环境公网 API 和 Base Sepolia 测试 USDC，需要支持自定义请求头的客户端；结果下载接口尚未在公网 Swagger 中确认。",
-  "version": "1.0.2",
+  "description": "为无法重拍的照片提供自动修复。当用户需要修复照片时使用。先以 multipart 上传照片，再通过 x402 创建任务，随后查询状态并下载；付费响应只返回任务标识。创建阶段结算，结算前拒绝不扣费；503 可能已扣费，须保留原请求恢复或联系支持。技术失败进入 ManualReview，保留成功修复权益，不自动退款或重试，目前无免费重试接口。使用开发环境公网 API 和 Base Sepolia 测试 USDC。",
+  "version": "1.0.3",
   "tags": ["photo", "image", "restoration", "async", "testnet"],
   "provider": {
     "name": "PhotoRescue",
@@ -44,7 +44,7 @@
           "success": {
             "type": "boolean",
             "const": true,
-            "description": "上传业务成功标志，HTTP 200 不一定表示业务成功。"
+            "description": "上传业务成功标志，失败返回非 2xx。"
           },
           "message": { "type": "string", "description": "业务响应消息。" },
           "code": { "type": "integer", "description": "业务响应代码。" },
@@ -85,11 +85,19 @@
     },
     {
       "id": "create-restoration",
-      "description": "使用上传凭据支付并创建外部修复任务；先 POST /api/v1/external/photo/upload 上传照片。付款请求必须带 Idempotency-Key（1–128 字符）。响应为 Submitted 任务，需另行查询和下载；结算恢复必须复用原请求、幂等键及付款载荷。",
+      "description": "上传后付费创建任务，在创建阶段结算，只返回任务标识。结算前拒绝不扣费；503 可能已结算，须复用原请求、幂等键及付款载荷恢复或联系支持。修复技术失败进入 ManualReview，不自动退款或重试，目前无免费重试接口。",
+      "depends_on": ["upload-photo"],
       "endpoint": {
         "url": "https://photo-rescue-dev-api.lumavill.com/api/v1/external/restoration/create",
         "method": "POST",
-        "content_type": "application/json"
+        "content_type": "application/json",
+        "headers": [
+          {
+            "name": "Idempotency-Key",
+            "required": true,
+            "description": "付款请求必填，由调用方生成的非空字符串，最长 128 字符；恢复必须复用原值、请求体和付款载荷，不能换参或换签名。"
+          }
+        ]
       },
       "price": "0.001",
       "input_schema": {
@@ -150,11 +158,19 @@
     },
     {
       "id": "download-result",
-      "description": "免费下载技术成功的修复结果；仅 status 为 Succeeded 时可用。请求必须带 Authorization: Bearer <创建时的 accessToken>。响应为二进制照片流，媒体类型以 Content-Type 为准，重复下载不重复计费。此接口尚未在公网 Swagger 中确认，调用前需确认部署可用。",
+      "description": "查询确认 Succeeded 后免费下载修复结果。请求头为 Authorization: Bearer <创建时的 accessToken>。响应为二进制照片流，媒体类型以 Content-Type 为准，重复下载不重复计费。公网路由已探测，完整付费下载流程仍待核验。",
+      "depends_on": ["get-restoration-status"],
       "endpoint": {
         "url": "https://photo-rescue-dev-api.lumavill.com/api/v1/external/restoration/result",
         "method": "POST",
-        "content_type": "application/json"
+        "content_type": "application/json",
+        "headers": [
+          {
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer <accessToken>，使用创建任务时由调用方生成并保管的访问令牌。"
+          }
+        ]
       },
       "price": "0",
       "input_schema": {
@@ -183,10 +199,18 @@
     {
       "id": "get-restoration-status",
       "description": "免费查询外部修复任务状态。请求必须带 Authorization: Bearer <创建时的 accessToken>。Succeeded 后可下载；ManualReview 表示待人工处理。任务不存在或访问令牌错误时返回 HTTP 404。",
+      "depends_on": ["create-restoration"],
       "endpoint": {
         "url": "https://photo-rescue-dev-api.lumavill.com/api/v1/external/restoration/status",
         "method": "POST",
-        "content_type": "application/json"
+        "content_type": "application/json",
+        "headers": [
+          {
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer <accessToken>，使用创建任务时由调用方生成并保管的访问令牌。"
+          }
+        ]
       },
       "price": "0",
       "input_schema": {
