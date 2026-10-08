@@ -133,8 +133,13 @@ app-market Skill（发现）            x402 Skill（调用 + 支付）
 1. **服务已接入 x402**：未付款的请求返回 `402 Payment Required` 以及支付要求；带合法付款签名的请求正常返回结果。建议使用 x402 v2（请求头 `PAYMENT-SIGNATURE`，v1 为 `X-PAYMENT`）。可以直接使用 x402 官方的服务端中间件（Express、Hono、Next.js 等）。
 2. **有收款钱包**：用于接收 USDC，地址由服务在 402 响应的 `payTo` 中返回，不需要登记到 manifest，可以随时更换。
 3. **有公网 HTTPS endpoint**：服务稳定可访问。
-4. **调用是无状态的单次请求**：一次付款对应一次请求，并在这次响应里返回完整结果。
-5. **文件用 URL 传递**：输入建议同时支持 URL 和 base64；输出建议返回带有效期的 URL，不要直接返回大段 base64。
+4. **收费接口业务失败时返回非 2xx 状态码**：x402 官方中间件只在业务返回的状态码小于 400 时结算。如果业务出错仍返回 200（例如 `{"success": false}`），买方会被扣费却拿不到结果。自己实现 x402 服务端的，也要保证业务失败时不结算。
+5. **优先单次请求返回结果**：能在一次付费请求中返回完整结果的，就不要拆成多步。
+6. **多步流程要声明清楚**：耗时较长的任务（如图片修复）可以拆成“上传 → 付费创建任务 → 查询状态 → 下载结果”。这时：
+   - 用 `depends_on` 声明调用顺序，用 `endpoint.headers` 声明需要的请求头；
+   - 只对一个步骤收费，其余辅助接口 `price` 写 `"0"`；
+   - **在应用 `description` 中写明在哪一步扣费**，以及付费后任务失败时如何处理（如是否退款、是否可重试）。买方付费时还没拿到最终结果，必须事先知道这一点。
+7. **文件传递**：小文件可以用 JSON 中的 URL 或 base64；大文件（如照片）可以用 `multipart/form-data` 上传。输出建议返回带有效期的 URL 或直接返回文件内容，不要返回大段 base64。
 
 ### 需要提供的信息
 
@@ -149,9 +154,11 @@ app-market Skill（发现）            x402 Skill（调用 + 支付）
 | `payment.network` / `payment.asset` | ✅ | 收款网络和币种，例如 `eip155:8453`（Base 主网）/ `USDC`。网络使用 x402 v2 的 CAIP-2 格式，必须和 402 响应一致。买方据此判断自己的钱包能否付款 |
 | `actions` | ✅ | 应用提供的能力列表。一个应用可以有多个 action，例如“美颜”和“抠图” |
 | `actions[].id` / `description` | ✅ | action 的标识和说明 |
-| `actions[].endpoint` | ✅ | `url`、`method`、`content_type` |
-| `actions[].price` | ✅ | 单次价格。仅用于展示，实际扣费以 402 响应为准，两者必须一致 |
-| `actions[].input_schema` | ✅ | 请求体的 JSON Schema，每个字段都要写 `description` |
+| `actions[].endpoint` | ✅ | `url`、`method`、`content_type`（`application/json` 或 `multipart/form-data`）；需要额外请求头时加上 `headers` |
+| `actions[].endpoint.headers` | | 需要调用方发送的请求头列表，每项包括 `name`、`required`、`description`（取值说明） |
+| `actions[].depends_on` | | 多步流程中，调用本 action 之前必须先完成的 action id |
+| `actions[].price` | ✅ | 单次价格，`"0"` 表示免费。仅用于展示，实际扣费以 402 响应为准，两者必须一致。每个应用至少要有一个收费的 action |
+| `actions[].input_schema` | ✅ | 请求体的 JSON Schema，每个字段都要写 `description`。multipart 时，`format` 为 `binary` 的字段表示文件，示例中写文件路径 |
 | `actions[].output_schema` | ✅ | 响应体的 JSON Schema |
 | `actions[].example` | ✅ | 一组真实可用的请求和响应示例，审核时会实际调用 |
 | `actions[].timeout_seconds` | | 预计最长处理时间，方便买方设置超时 |
@@ -237,17 +244,22 @@ npm run check:endpoints -- registry/<id>.json       # 线上 402 检查（不会
 - [ ] 是合法的 JSON，并且符合 `schema/manifest.schema.json`
 - [ ] `id` 和文件名一致（因此不会与已有应用重复）
 - [ ] 同一应用内 action id 不重复
+- [ ] `depends_on` 只引用同一应用内存在的 action，没有循环依赖
+- [ ] 至少有一个收费的 action
 - [ ] `input_schema` / `output_schema` 本身是合法的 JSON Schema
 - [ ] `example.request` 符合 `input_schema`，`example.response` 符合 `output_schema`
 
 上架检查（`scripts/check-pr.js`，取自目标分支运行，PR 无法修改它）：
 - [ ] PR 只修改了 `registry/*.json`
 - [ ] 修改已有应用时，`version` 比原来的大
-- [ ] 不带付款请求每个新增或修改的 endpoint，返回 402
+- [ ] 不带付款请求每个新增或修改的**收费** endpoint，返回 402（免费接口跳过；需要前置步骤、上传文件或请求头的收费接口无法自动检查，标为“需人工核验”）
 - [ ] 402 里有 `payment.network` 上的 `exact` 付款方式，币种是该网络的官方 USDC，金额等于 `price`
 
 **人工审核：**
-- [ ] 按 `example.request` 实际付款调用一次，返回结果符合 `output_schema`
+- [ ] 按 `example.request` 实际付款调用一次，返回结果符合 `output_schema`；多步流程要完整走一遍（包括免费步骤）
+- [ ] CI 标为“需人工核验”的收费接口：在完整流程中确认不带付款时返回 402，价格、网络、币种与 manifest 一致
+- [ ] 收费接口业务失败时返回非 2xx，且没有扣费
+- [ ] 多步流程：`description` 写明了在哪一步扣费，以及付费后失败如何处理
 - [ ] `description` 能让 Agent 准确判断什么时候该使用
 
 **更新**：修改 manifest 后递增 `version` 并重新提交；调整价格时必须同时更新 manifest 和服务端。

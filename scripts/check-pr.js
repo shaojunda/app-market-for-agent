@@ -85,14 +85,25 @@ async function main() {
   }
 
   // 3. 线上检查：endpoint 返回的 402 与 manifest 一致
+  const manual = [];
   for (const { file, manifest } of toCheck) {
     if (!Array.isArray(manifest.actions) || !manifest.payment) continue;
-    for (const { action, errors: actionErrors } of await checkManifest(manifest)) {
-      if (actionErrors.length) {
-        errors.push(...actionErrors.map((e) => `${path.basename(file)} → ${action}：${e}`));
-      } else {
-        console.log(`✓ ${path.basename(file)} → ${action}：402 与 manifest 一致`);
-      }
+    for (const { action, status, reason, errors: actionErrors } of await checkManifest(manifest)) {
+      const label = `${path.basename(file)} → ${action}`;
+      if (status === "fail") errors.push(...actionErrors.map((e) => `${label}：${e}`));
+      else if (status === "manual") manual.push(`${label}：${reason}`);
+      else if (status === "free") console.log(`- ${label}：免费，跳过线上检查`);
+      else console.log(`✓ ${label}：402 与 manifest 一致`);
+    }
+  }
+
+  // 无法自动检查的收费接口不算失败，但要在审核时按完整流程核验
+  if (manual.length) {
+    console.log("\n以下收费接口无法自动检查，请在人工审核时按完整流程核验 402、价格和网络：");
+    for (const m of manual) console.log(`  ? ${m}`);
+    if (process.env.GITHUB_STEP_SUMMARY) {
+      const lines = ["### 需要人工核验的收费接口", "", ...manual.map((m) => `- [ ] ${m}`), ""];
+      fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n"));
     }
   }
 

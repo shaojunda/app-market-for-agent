@@ -43,43 +43,77 @@ node scripts/market.js list                  # 列出全部应用（目录较小
 ### 3. 读取完整信息
 
 ```bash
-node scripts/market.js get <app-id> <action-id>
+node scripts/market.js get <app-id>               # 整个应用（多步流程时用这个）
+node scripts/market.js get <app-id> <action-id>   # 只看一个 action
 ```
 
-返回这个 action 的 endpoint（`url`、`method`、`content_type`）、`price`、`input_schema`、`output_schema`、`example`，以及收款信息 `payment`。
+返回 action 的 endpoint（`url`、`method`、`content_type`、需要的请求头 `headers`）、`price`、`depends_on`、`input_schema`、`output_schema`、`example`，以及收款信息 `payment`。
+
+**判断是单步还是多步**：如果有 action 带 `depends_on`，说明这是多步流程（如“上传 → 付费创建任务 → 查询状态 → 下载结果”），要读取整个应用，按依赖顺序执行，见下文“多步流程”。
 
 ### 4. 告知用户并确认
 
 调用会花费真实的钱。调用前告诉用户：要用哪个应用和 action、由谁提供、单次价格（金额加币种）。得到确认后再继续。如果用户已经明确授权过这类调用，可以跳过这一步。
 
+多步流程还要告诉用户**在哪一步扣费**，以及付费后任务失败会怎样（以应用 `description` 为准）。例如“付费只创建任务，修复失败不退款”。
+
 ### 5. 组装请求
 
-按 `input_schema` 构造请求体：
+按 `input_schema` 构造请求：
 - 必填字段（`required`）一个都不能少，枚举字段只能取 `enum` 里的值。
-- 参考 `example.request` 的格式。
-- 用户给的是本地文件时：如果字段接受 base64，就把文件读出来转成 data URI（如 `data:image/jpeg;base64,...`）；如果只接受 URL，告诉用户需要先把文件上传到可公开访问的位置。
+- 参考 `example.request` 的格式。示例中的令牌、ID 等如果被标为占位值，必须换成真实值。
+- **请求头**：`endpoint.headers` 中 `required` 为 true 的必须发送，取值按其 `description`。需要调用方生成的值（如 `Idempotency-Key`、访问令牌），用足够长的随机字符串，并记下来供后续步骤使用。
+- **`content_type` 为 `application/json`**：用户给的是本地文件时，如果字段接受 base64，就把文件读出来转成 data URI（如 `data:image/jpeg;base64,...`）；如果只接受 URL，告诉用户需要先把文件上传到可公开访问的位置。
+- **`content_type` 为 `multipart/form-data`**：`input_schema` 中 `format` 为 `binary` 的字段是文件，直接上传文件内容，**不要转成 base64 或传路径字符串**；其余字段作为普通表单字段。
 
 ### 6. 交给 x402 工具调用
 
 把以下信息交给你所用的 x402 工具：
-- `endpoint.url`、`endpoint.method`、`endpoint.content_type`
+- `endpoint.url`、`endpoint.method`、`endpoint.content_type`、需要的请求头
 - 组装好的请求体
 - 预期价格：`price` 加上 `payment.asset` 和 `payment.network`。如果 402 响应要求的金额高于这个价格，或者网络、币种和 manifest 不一致，应当停止并告诉用户。收款地址以 402 响应为准。
+
+**免费的 action（`price` 为 `"0"`）不需要付款**，可以用 x402 工具的免费请求功能或普通 HTTP 客户端调用。如果免费接口意外返回 402，停止并告诉用户。
 
 例如使用 [x402-pay](https://github.com/shaojunda/x402-pay) Skill 时：
 
 ```bash
-node <x402-pay 目录>/scripts/pay.mjs pay --url <endpoint.url> --method <endpoint.method> \
-  --max-amount <price> --network <payment.network> --body '<请求体 JSON>'
+P=<x402-pay 目录>/scripts/pay.mjs
+
+# 收费接口（JSON）
+node $P pay --url <endpoint.url> --method <endpoint.method> \
+  --max-amount <price> --network <payment.network> --body '<请求体 JSON>' \
+  --header 'Idempotency-Key: <随机字符串>'
+
+# 免费接口：上传文件（multipart）
+node $P request --url <endpoint.url> --form file=@/path/to/photo.jpg
+
+# 免费接口：下载二进制结果并保存
+node $P request --url <endpoint.url> --body '<请求体 JSON>' \
+  --header 'Authorization: Bearer <令牌>' --output ./result.jpg
 ```
 
-不要绕过 x402 工具直接请求 endpoint 或自己签名付款。
+不要绕过 x402 工具直接请求收费 endpoint，也不要自己签名付款。
 
 如果当前环境没有任何支持 x402 的工具，告诉用户需要先准备一个，可选方案见 https://shaojunda.github.io/app-market-for-agent/install.md 的“支付工具”一节。用户的钱包里需要有 manifest 中 `payment.network` 网络上的 `payment.asset`（目前是 Base 上的 USDC）。
 
 ### 7. 解读结果
 
-按 `output_schema` 理解返回内容，把结果交给用户。例如返回的是带有效期的文件地址，要提醒用户及时保存。
+按 `output_schema` 理解返回内容，把结果交给用户：
+- 返回带有效期的文件地址时，提醒用户及时保存。
+- 返回二进制文件时（`output_schema` 为 `format: binary`），保存到本地文件，告诉用户路径。
+- **HTTP 200 不一定代表业务成功**：如果响应体表示失败（如 `"success": false`），按失败处理，把原因告诉用户。
+
+## 多步流程
+
+当应用的 action 带有 `depends_on` 时：
+
+1. **按依赖顺序执行**：先执行没有依赖的步骤，再执行依赖它们的步骤。上一步的输出（如 `uploadId`、`restorationId`）按后一步的 `input_schema` 说明填入。
+2. **保存中间结果**：上传凭据、任务 ID、自己生成的令牌和 `Idempotency-Key`，在整个流程中都要用到，不要丢失；流程中断时告诉用户这些值，方便之后继续。
+3. **只在收费的那一步付款**：其余步骤是免费的。付款前按第 4 步确认。
+4. **轮询状态**：异步任务创建后，按应用说明查询状态。查询间隔从几秒开始，逐渐加长（如 5、10、20、30 秒），不要高频请求；超过 `timeout_seconds`（没有则约 10 分钟）仍未完成时，停下来告诉用户当前状态和任务 ID。
+5. **处理终止状态**：成功后再执行下载等后续步骤；如果进入人工审核或失败状态，告诉用户，不要重复付费创建新任务。
+6. **重试付费步骤时复用同一个 `Idempotency-Key`**（如果应用要求），避免重复扣费。
 
 ## 注意事项
 

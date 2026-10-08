@@ -25,6 +25,8 @@ const SKILLS_DIR = path.join(ROOT, "skills");
 const checkOnly = process.argv.includes("--check");
 
 const ajv = new Ajv({ allErrors: true, strict: false });
+// multipart 文件字段用 format: "binary" 标记；它不对字符串内容做限制
+ajv.addFormat("binary", true);
 const validateManifest = ajv.compile(JSON.parse(fs.readFileSync(SCHEMA, "utf8")));
 
 function formatErrors(errors) {
@@ -68,7 +70,37 @@ function checkFile(file) {
     errors.push(...checkExample(`${prefix}.example.response`, action.output_schema, action.example.response));
   }
 
+  errors.push(...checkDependencies(manifest.actions));
+  if (!manifest.actions.some((a) => Number(a.price) > 0)) {
+    errors.push("至少要有一个收费的 action（price 大于 0）");
+  }
+
   return { manifest, errors };
+}
+
+// depends_on 只能引用同一应用内的其他 action，且不能形成循环
+function checkDependencies(actions) {
+  const errors = [];
+  const byId = new Map(actions.map((a) => [a.id, a]));
+  for (const action of actions) {
+    for (const dep of action.depends_on || []) {
+      if (dep === action.id) errors.push(`actions[${action.id}].depends_on 不能依赖自己`);
+      else if (!byId.has(dep)) errors.push(`actions[${action.id}].depends_on 引用了不存在的 action：${dep}`);
+    }
+  }
+  const state = new Map(); // 1 = 访问中，2 = 已完成
+  const visit = (id, chain) => {
+    if (state.get(id) === 2) return;
+    if (state.get(id) === 1) {
+      errors.push(`depends_on 存在循环：${[...chain, id].join(" → ")}`);
+      return;
+    }
+    state.set(id, 1);
+    for (const dep of byId.get(id)?.depends_on || []) if (byId.has(dep) && dep !== id) visit(dep, [...chain, id]);
+    state.set(id, 2);
+  };
+  for (const id of byId.keys()) visit(id, []);
+  return errors;
 }
 
 function summarize(m) {
