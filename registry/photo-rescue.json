@@ -1,0 +1,255 @@
+{
+  "$schema": "https://shaojunda.github.io/app-market-for-agent/schema/manifest.schema.json",
+  "id": "photo-rescue",
+  "name": "PhotoRescue 照片自动修复（测试网）",
+  "description": "为无法重拍的照片提供自动修复。当用户需要修复照片时使用。先以 multipart 上传照片，再通过 x402 创建任务，随后查询状态并下载；付费响应只返回任务标识。创建阶段结算，结算前拒绝不扣费；503 可能已扣费，须保留原请求恢复或联系支持。技术失败进入 ManualReview，保留成功修复权益，不自动退款或重试，目前无免费重试接口。使用开发环境公网 API 和 Base Sepolia 测试 USDC。",
+  "version": "1.0.3",
+  "tags": ["photo", "image", "restoration", "async", "testnet"],
+  "provider": {
+    "name": "PhotoRescue",
+    "contact": "https://github.com/appfi5/photo-rescue/issues",
+    "website": "https://github.com/appfi5/photo-rescue"
+  },
+  "payment": {
+    "network": "eip155:84532",
+    "asset": "USDC"
+  },
+  "actions": [
+    {
+      "id": "upload-photo",
+      "description": "免费上传一张原始照片并获取上传凭据。请求为 multipart/form-data，file 为实际文件；支持 JPEG、PNG、HEIC，大小不超过 20,000,000 字节，宽高各不超过 12,000 像素。不是 JSON 或 Base64 上传。",
+      "endpoint": {
+        "url": "https://photo-rescue-dev-api.lumavill.com/api/v1/external/photo/upload",
+        "method": "POST",
+        "content_type": "multipart/form-data"
+      },
+      "price": "0",
+      "input_schema": {
+        "type": "object",
+        "required": ["file"],
+        "additionalProperties": false,
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "description": "multipart 中的单个非空照片文件，最大 20,000,000 字节；示例路径表示待上传的本地文件，客户端必须读取文件并发送文件内容，而不是路径字符串。"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "required": ["success", "data"],
+        "additionalProperties": false,
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true,
+            "description": "上传业务成功标志，失败返回非 2xx。"
+          },
+          "message": { "type": "string", "description": "业务响应消息。" },
+          "code": { "type": "integer", "description": "业务响应代码。" },
+          "errorData": { "type": "array", "items": {}, "description": "业务错误详情。" },
+          "data": {
+            "type": "object",
+            "required": ["uploadId", "uploadToken"],
+            "additionalProperties": false,
+            "description": "后续创建外部修复任务所需的上传凭据。",
+            "properties": {
+              "uploadId": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+                "description": "上传凭据标识。"
+              },
+              "uploadToken": {
+                "type": "string",
+                "minLength": 1,
+                "description": "只在此次上传响应中返回的上传令牌，需要调用方保管。"
+              }
+            }
+          }
+        }
+      },
+      "example": {
+        "request": { "file": "/path/to/photo.jpg" },
+        "response": {
+          "success": true,
+          "message": "",
+          "code": 200,
+          "errorData": [],
+          "data": {
+            "uploadId": "11111111-1111-4111-8111-111111111111",
+            "uploadToken": "EXAMPLE_UPLOAD_TOKEN_REPLACE_BEFORE_USE"
+          }
+        }
+      }
+    },
+    {
+      "id": "create-restoration",
+      "description": "上传后付费创建任务，在创建阶段结算，只返回任务标识。结算前拒绝不扣费；503 可能已结算，须复用原请求、幂等键及付款载荷恢复或联系支持。修复技术失败进入 ManualReview，不自动退款或重试，目前无免费重试接口。",
+      "depends_on": ["upload-photo"],
+      "endpoint": {
+        "url": "https://photo-rescue-dev-api.lumavill.com/api/v1/external/restoration/create",
+        "method": "POST",
+        "content_type": "application/json",
+        "headers": [
+          {
+            "name": "Idempotency-Key",
+            "required": true,
+            "description": "付款请求必填，由调用方生成的非空字符串，最长 128 字符；恢复必须复用原值、请求体和付款载荷，不能换参或换签名。"
+          }
+        ]
+      },
+      "price": "0.001",
+      "input_schema": {
+        "type": "object",
+        "required": ["uploadId", "uploadToken", "accessToken"],
+        "additionalProperties": false,
+        "properties": {
+          "uploadId": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "not": { "const": "00000000-0000-0000-0000-000000000000" },
+            "description": "免费上传接口响应 data.uploadId 中的非空 UUID；示例值是占位值，调用前必须替换为实际上传凭据。"
+          },
+          "uploadToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "\\S",
+            "description": "免费上传接口响应 data.uploadToken 中的令牌，仅在上传响应中返回；必须与 uploadId 配对。示例值是占位值。"
+          },
+          "accessToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S",
+            "description": "调用方生成并自行保管的高熵任务访问令牌，建议使用 32 字节随机数的 Base64URL 编码。查询和下载时作为 Authorization: Bearer <accessToken> 请求头发送。示例令牌不得用于实际任务。"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "required": ["restorationId", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "restorationId": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "description": "已完成付款结算并提交的外部修复任务标识，用于后续查询状态和下载修复结果。"
+          },
+          "status": {
+            "type": "string",
+            "const": "Submitted",
+            "description": "任务已提交，尚未生成修复结果；这是创建成功响应的状态。"
+          }
+        }
+      },
+      "example": {
+        "request": {
+          "uploadId": "11111111-1111-4111-8111-111111111111",
+          "uploadToken": "EXAMPLE_UPLOAD_TOKEN_REPLACE_BEFORE_USE",
+          "accessToken": "EXAMPLE_ACCESS_TOKEN_GENERATE_BEFORE_USE"
+        },
+        "response": {
+          "restorationId": "22222222-2222-4222-8222-222222222222",
+          "status": "Submitted"
+        }
+      }
+    },
+    {
+      "id": "download-result",
+      "description": "查询确认 Succeeded 后免费下载修复结果。请求头为 Authorization: Bearer <创建时的 accessToken>。响应为二进制照片流，媒体类型以 Content-Type 为准，重复下载不重复计费。公网路由已探测，完整付费下载流程仍待核验。",
+      "depends_on": ["get-restoration-status"],
+      "endpoint": {
+        "url": "https://photo-rescue-dev-api.lumavill.com/api/v1/external/restoration/result",
+        "method": "POST",
+        "content_type": "application/json",
+        "headers": [
+          {
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer <accessToken>，使用创建任务时由调用方生成并保管的访问令牌。"
+          }
+        ]
+      },
+      "price": "0",
+      "input_schema": {
+        "type": "object",
+        "required": ["restorationId"],
+        "additionalProperties": false,
+        "properties": {
+          "restorationId": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "not": { "const": "00000000-0000-0000-0000-000000000000" },
+            "description": "创建接口返回的外部修复任务标识。访问令牌放在 Authorization 请求头，不放在 JSON 请求体中。"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "string",
+        "format": "binary",
+        "description": "HTTP 响应为原始照片二进制流，不是 JSON 字符串、Base64 或 URL。JSON 中的响应示例仅是二进制内容的文字占位表示。"
+      },
+      "example": {
+        "request": { "restorationId": "22222222-2222-4222-8222-222222222222" },
+        "response": "<修复结果二进制照片流：此文字仅为示例占位，实际响应为文件字节>"
+      }
+    },
+    {
+      "id": "get-restoration-status",
+      "description": "免费查询外部修复任务状态。请求必须带 Authorization: Bearer <创建时的 accessToken>。Succeeded 后可下载；ManualReview 表示待人工处理。任务不存在或访问令牌错误时返回 HTTP 404。",
+      "depends_on": ["create-restoration"],
+      "endpoint": {
+        "url": "https://photo-rescue-dev-api.lumavill.com/api/v1/external/restoration/status",
+        "method": "POST",
+        "content_type": "application/json",
+        "headers": [
+          {
+            "name": "Authorization",
+            "required": true,
+            "description": "Bearer <accessToken>，使用创建任务时由调用方生成并保管的访问令牌。"
+          }
+        ]
+      },
+      "price": "0",
+      "input_schema": {
+        "type": "object",
+        "required": ["restorationId"],
+        "additionalProperties": false,
+        "properties": {
+          "restorationId": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "not": { "const": "00000000-0000-0000-0000-000000000000" },
+            "description": "创建接口返回的外部修复任务标识。访问令牌放在 Authorization 请求头，不放在 JSON 请求体中。"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "required": ["restorationId", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "restorationId": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "description": "外部修复任务标识。"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PaymentProcessing", "Submitted", "Processing", "AwaitingConfirmation", "Succeeded", "ManualReview"],
+            "description": "稳定公开任务状态；只有 Succeeded 表示可下载的技术成功。"
+          }
+        }
+      },
+      "example": {
+        "request": { "restorationId": "22222222-2222-4222-8222-222222222222" },
+        "response": {
+          "restorationId": "22222222-2222-4222-8222-222222222222",
+          "status": "Succeeded"
+        }
+      }
+    }
+  ]
+}
